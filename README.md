@@ -6,4 +6,4 @@
 - Extractive Summarization
 
 ## Clustering
-- [Find best number of clusters](https://github.com/k3ybladewielder/utils/blob/main/find_best_k.py)
+- [Find best number of clusters](https://github.com/k3ybladewielder/utils/blob/main/clustering_evaluation.py)
