@@ -1,8 +1,7 @@
 # Utility functions to improve data science
 ## NLP
 - Text treatment
-- Wordcloud
-- Paired Wordclouds
+- Wordcloud and Paired Wordclouds
 - Extractive Summarization
 
 ## Clustering
