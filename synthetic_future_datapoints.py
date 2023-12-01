@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def criar_dataset_sintetico(data, date_col, target_col, num_pontos_out_of_sample):
+def criar_dataset_sintetico_ma(data, date_col, target_col, num_pontos_out_of_sample):
     """
     Cria um conjunto de dados sintético baseado em uma série temporal.
 
@@ -48,3 +48,50 @@ def criar_dataset_sintetico(data, date_col, target_col, num_pontos_out_of_sample
         data = data.append(novo_registro, ignore_index=True)
 
     return data
+
+def criar_dataset_sintetico_sarimax(data, date_col, target_col, num_pontos_out_of_sample):
+    # Ordena o DataFrame pela coluna de data
+    data[date_col] = pd.to_datetime(data[date_col])
+    data = data.sort_values(by=date_col)
+
+    # Colunas que não são a coluna de data
+    colunas_nao_date = [coluna for coluna in data.columns if coluna not in [target_col, date_col]]
+
+    # Criando os próximos meses baseados no último mês conhecido
+    ultimo_mes_conhecido = data[date_col].max()
+    proximos_meses = pd.date_range(start=ultimo_mes_conhecido + pd.DateOffset(months=1), periods=num_pontos_out_of_sample, freq='MS')
+
+    # DataFrame para armazenar todos os novos registros
+    novos_registros_df = pd.DataFrame()
+
+    # Preenchendo iterativamente os próximos valores estimados
+    for coluna in tqdm(colunas_nao_date, desc="Processando colunas"):
+        # Selecionando a coluna atual
+        serie_temporal = data[[date_col, coluna]].set_index(date_col)
+
+        # Busca de melhores parâmetros com Auto ARIMA
+        modelo_arima = auto_arima(serie_temporal[coluna], d=1, start_p=1, start_q=1,
+                                  max_p=5, max_q=5, m=6,  D=1, start_P=1,  
+                                  start_Q=1, max_P=5, max_Q=5, information_criterion='aic', 
+                                  seasonal=True, trace=False, error_action='ignore', stepwise=True)
+
+        # melhores parametros
+        best_order = modelo_arima.order
+        best_seasonal_order = modelo_arima.seasonal_order
+
+        # modelo SARIMAX com os melhores parâmetros
+        modelo_sarimax = SARIMAX(serie_temporal[coluna], order=best_order, seasonal_order=best_seasonal_order)
+        resultado_sarimax = model.fit()
+
+        # out of sample forecast
+        forecast = resultado_sarimax.get_forecast(steps=num_pontos_out_of_sample)
+        previsoes = forecast.predicted_mean
+
+        # Adicionando os novos registros ao DataFrame temporário
+        novos_registros_df[coluna] = previsoes
+
+    # Adicionando os novos registros ao DataFrame original
+    novos_registros_df = novos_registros_df.reset_index().rename(columns={"index":date_col})
+    data = pd.concat([data, novos_registros_df], axis=1)
+
+    return data, novos_registros_df
